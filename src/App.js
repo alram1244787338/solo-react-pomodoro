@@ -203,8 +203,10 @@ export default function App() {
   }, []);
 
   const editTask = useCallback((taskId, newName) => {
+    const trimmed = newName?.trim();
+    if (!trimmed) return;
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, name: newName } : t))
+      prev.map((t) => (t.id === taskId ? { ...t, name: trimmed } : t))
     );
   }, [setTasks]);
 

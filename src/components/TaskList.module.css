@@ -286,6 +286,26 @@
   color: var(--text-primary);
   background-color: var(--bg-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 15%, transparent);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.editInput:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+}
+
+.editInputError {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
 }
 
 @media (max-width: 768px) {

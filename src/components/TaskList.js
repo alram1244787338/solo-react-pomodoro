@@ -15,7 +15,9 @@ export default function TaskList({
   const [inputValue, setInputValue] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState('');
+  const [editError, setEditError] = useState(false);
   const editInputRef = useRef(null);
+  const shakeTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (editingId && editInputRef.current) {
@@ -24,18 +26,48 @@ export default function TaskList({
     }
   }, [editingId]);
 
+  useEffect(() => {
+    if (editError && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [editError]);
+
+  const triggerShake = () => {
+    setEditError(true);
+    if (shakeTimeoutRef.current) {
+      clearTimeout(shakeTimeoutRef.current);
+    }
+    shakeTimeoutRef.current = setTimeout(() => {
+      setEditError(false);
+    }, 600);
+  };
+
   const startEditing = (task, e) => {
     if (e) e.stopPropagation();
     setEditingId(task.id);
     setEditingValue(task.name);
+    setEditError(false);
   };
 
   const cancelEditing = () => {
     setEditingId(null);
     setEditingValue('');
+    setEditError(false);
   };
 
   const saveEditing = () => {
+    const newName = editingValue.trim();
+    if (!newName) {
+      triggerShake();
+      return;
+    }
+    if (editingId) {
+      onEdit(editingId, newName);
+    }
+    cancelEditing();
+  };
+
+  const handleEditBlur = () => {
     const newName = editingValue.trim();
     if (newName && editingId) {
       onEdit(editingId, newName);
@@ -155,12 +187,16 @@ export default function TaskList({
                     ref={editInputRef}
                     type="text"
                     value={editingValue}
-                    onChange={(e) => setEditingValue(e.target.value)}
-                    onBlur={saveEditing}
+                    onChange={(e) => {
+                      setEditingValue(e.target.value);
+                      if (editError) setEditError(false);
+                    }}
+                    onBlur={handleEditBlur}
                     onKeyDown={handleEditKeyDown}
                     onClick={(e) => e.stopPropagation()}
-                    className={styles.editInput}
+                    className={`${styles.editInput} ${editError ? styles.editInputError : ''}`}
                     maxLength={100}
+                    placeholder="任务名称不能为空"
                   />
                 ) : (
                   <>

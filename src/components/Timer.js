@@ -49,11 +49,18 @@ function playBeep() {
   const ctx = getAudioContext();
   if (!ctx) return;
   try {
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    const now = ctx.currentTime;
+    const startDelay = ctx.state === 'running' ? 0 : 0.1;
+
     const notes = [
-      { freq: 523.25, start: 0, end: 0.35 },
-      { freq: 659.25, start: 0.15, end: 0.5 },
-      { freq: 783.99, start: 0.3, end: 0.65 },
-      { freq: 1046.5, start: 0.5, end: 0.9 },
+      { freq: 523.25, start: startDelay + 0, end: startDelay + 0.35 },
+      { freq: 659.25, start: startDelay + 0.15, end: startDelay + 0.5 },
+      { freq: 783.99, start: startDelay + 0.3, end: startDelay + 0.65 },
+      { freq: 1046.5, start: startDelay + 0.5, end: startDelay + 0.9 },
     ];
 
     notes.forEach(({ freq, start, end }) => {
@@ -63,30 +70,31 @@ function playBeep() {
       gain.connect(ctx.destination);
       osc.frequency.value = freq;
       osc.type = 'sine';
-      const t0 = ctx.currentTime + start;
-      const t1 = ctx.currentTime + end;
-      gain.gain.setValueAtTime(0, t0);
-      gain.gain.linearRampToValueAtTime(0.25, t0 + 0.05);
-      gain.gain.setValueAtTime(0.25, t1 - 0.1);
-      gain.gain.exponentialRampToValueAtTime(0.001, t1);
-      osc.start(t0);
-      osc.stop(t1 + 0.05);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.3, start + 0.05);
+      gain.gain.setValueAtTime(0.3, end - 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, end);
+      osc.start(start);
+      osc.stop(end + 0.05);
     });
 
     setTimeout(() => {
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
+      const ctx2 = getAudioContext();
+      if (!ctx2) return;
+      if (ctx2.state === 'suspended') ctx2.resume();
+      const now2 = ctx2.currentTime;
+      const osc2 = ctx2.createOscillator();
+      const gain2 = ctx2.createGain();
       osc2.connect(gain2);
-      gain2.connect(ctx.destination);
+      gain2.connect(ctx2.destination);
       osc2.frequency.value = 783.99;
       osc2.type = 'sine';
-      const now = ctx.currentTime;
-      gain2.gain.setValueAtTime(0, now);
-      gain2.gain.linearRampToValueAtTime(0.2, now + 0.05);
-      gain2.gain.setValueAtTime(0.2, now + 0.35);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
-      osc2.start(now);
-      osc2.stop(now + 0.6);
+      gain2.gain.setValueAtTime(0, now2);
+      gain2.gain.linearRampToValueAtTime(0.25, now2 + 0.05);
+      gain2.gain.setValueAtTime(0.25, now2 + 0.4);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now2 + 0.65);
+      osc2.start(now2);
+      osc2.stop(now2 + 0.7);
     }, 1100);
   } catch (e) {
     console.warn('Audio playback failed:', e);
@@ -200,9 +208,13 @@ export default function Timer({
   const [isRunning, setIsRunning] = useState(autoStart);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef(null);
+  const timeoutRef = useRef(null);
   const startTimeRef = useRef(null);
+  const endTimeRef = useRef(null);
   const elapsedBeforePauseRef = useRef(0);
   const hasCompletedRef = useRef(false);
+  const completedAtRef = useRef(null);
+  const lastBeepAtRef = useRef(0);
 
   const phaseInfo = PHASE_INFO[phase];
   const minutes = Math.floor(totalSeconds / 60);
@@ -216,9 +228,21 @@ export default function Timer({
   const handleComplete = useCallback(() => {
     if (hasCompletedRef.current) return;
     hasCompletedRef.current = true;
+    completedAtRef.current = Date.now();
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsRunning(false);
 
     if (soundEnabled) {
       playBeep();
+      lastBeepAtRef.current = Date.now();
     }
     if (notificationsEnabled) {
       requestNotificationPermission();
@@ -242,32 +266,67 @@ export default function Timer({
     onComplete(durationMinutes);
   }, [soundEnabled, notificationsEnabled, phase, durationMinutes, currentTask, onComplete]);
 
+  const checkAndUpdate = useCallback(() => {
+    if (!endTimeRef.current || hasCompletedRef.current) return;
+    const now = Date.now();
+    const remainingMs = Math.max(0, endTimeRef.current - now);
+    const remainingSeconds = Math.ceil(remainingMs / 1000);
+    setTotalSeconds(remainingSeconds);
+    if (remainingMs <= 0) {
+      handleComplete();
+    }
+  }, [handleComplete]);
+
   useEffect(() => {
     if (!isRunning) return;
 
     startTimeRef.current = Date.now() - elapsedBeforePauseRef.current * 1000;
+    endTimeRef.current = startTimeRef.current + durationMinutes * 60 * 1000;
 
     timerRef.current = setInterval(() => {
-      const now = Date.now();
-      const elapsedMs = now - startTimeRef.current;
-      const elapsedSeconds = Math.floor(elapsedMs / 1000);
-      const remaining = Math.max(0, durationMinutes * 60 - elapsedSeconds);
+      checkAndUpdate();
+    }, 250);
 
-      setTotalSeconds(remaining);
+    const remainingMs = endTimeRef.current - Date.now();
+    timeoutRef.current = setTimeout(() => {
+      checkAndUpdate();
+    }, Math.max(0, remainingMs));
 
-      if (remaining <= 0) {
-        clearInterval(timerRef.current);
-        setIsRunning(false);
-        handleComplete();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndUpdate();
+        const now = Date.now();
+        if (soundEnabled && hasCompletedRef.current && completedAtRef.current) {
+          const sinceComplete = now - completedAtRef.current;
+          const sinceLastBeep = now - lastBeepAtRef.current;
+          if (sinceComplete < 5 * 60 * 1000 && sinceLastBeep > 30 * 1000) {
+            playBeep();
+            lastBeepAtRef.current = now;
+          }
+        }
       }
-    }, 100);
+    };
+
+    const handleFocus = () => {
+      checkAndUpdate();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
     };
-  }, [isRunning, durationMinutes, handleComplete]);
+  }, [isRunning, durationMinutes, checkAndUpdate, soundEnabled]);
 
   useEffect(() => {
     if (notificationsEnabled) {

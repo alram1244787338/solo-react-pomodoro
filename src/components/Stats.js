@@ -93,7 +93,7 @@ function drawBarChart(canvas, data) {
 
   const width = rect.width;
   const height = rect.height;
-  const padding = { top: 40, right: 16, bottom: 50, left: 52 };
+  const padding = { top: 52, right: 16, bottom: 56, left: 52 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -119,8 +119,12 @@ function drawBarChart(canvas, data) {
     return;
   }
 
+  const stepSize = 30;
   const maxValue = Math.max(...data.map((d) => d.focusMinutes), 60);
-  const niceMax = Math.ceil(maxValue / 30) * 30;
+  let niceMax = Math.ceil(maxValue / stepSize) * stepSize;
+  while (maxValue / niceMax > 0.82) {
+    niceMax += stepSize;
+  }
 
   ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.fillStyle = textColor;
@@ -205,7 +209,7 @@ function drawLineChart(canvas, data) {
 
   const width = rect.width;
   const height = rect.height;
-  const padding = { top: 40, right: 24, bottom: 60, left: 52 };
+  const padding = { top: 60, right: 24, bottom: 66, left: 52 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -231,8 +235,12 @@ function drawLineChart(canvas, data) {
     return;
   }
 
+  const stepSize = 60;
   const maxValue = Math.max(...data.map((d) => d.focusMinutes), 60);
-  const niceMax = Math.ceil(maxValue / 60) * 60;
+  let niceMax = Math.ceil(maxValue / stepSize) * stepSize;
+  while (maxValue / niceMax > 0.78) {
+    niceMax += stepSize;
+  }
 
   ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.fillStyle = textColor;
@@ -303,8 +311,11 @@ function drawLineChart(canvas, data) {
 
       const labelWidth = ctx.measureText(valueLabel).width + 12;
       const labelHeight = 20;
+      const labelAbove = p.y - padding.top > labelHeight + 16;
       const labelX = p.x - labelWidth / 2;
-      const labelY = p.y - labelHeight - 10;
+      const labelY = labelAbove
+        ? p.y - labelHeight - 10
+        : p.y + 10;
 
       ctx.fillStyle = lineColor;
       ctx.fillRect(labelX + 2, labelY + 2, labelWidth, labelHeight);
@@ -331,13 +342,23 @@ function drawLineChart(canvas, data) {
       ctx.textBaseline = 'middle';
       ctx.fillText(valueLabel, p.x, labelY + labelHeight / 2);
 
-      ctx.beginPath();
-      ctx.moveTo(p.x - 4, labelY + labelHeight);
-      ctx.lineTo(p.x + 4, labelY + labelHeight);
-      ctx.lineTo(p.x, labelY + labelHeight + 4);
-      ctx.closePath();
-      ctx.fillStyle = lineColor;
-      ctx.fill();
+      if (labelAbove) {
+        ctx.beginPath();
+        ctx.moveTo(p.x - 4, labelY + labelHeight);
+        ctx.lineTo(p.x + 4, labelY + labelHeight);
+        ctx.lineTo(p.x, labelY + labelHeight + 4);
+        ctx.closePath();
+        ctx.fillStyle = lineColor;
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(p.x - 4, labelY);
+        ctx.lineTo(p.x + 4, labelY);
+        ctx.lineTo(p.x, labelY - 4);
+        ctx.closePath();
+        ctx.fillStyle = lineColor;
+        ctx.fill();
+      }
     }
 
     ctx.fillStyle = lineColor;
