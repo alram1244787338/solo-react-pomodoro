@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { formatFocusTime } from '../utils/aggregators';
 import styles from './TaskList.module.css';
 
 export default function TaskList({
@@ -98,13 +99,6 @@ export default function TaskList({
   const todayTasks = tasks.filter(
     (t) => t.createdAt.startsWith(today.toISOString().split('T')[0])
   );
-
-  const formatFocusTime = (minutes) => {
-    if (minutes < 60) return `${minutes}分钟`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}小时${mins}分钟` : `${hours}小时`;
-  };
 
   return (
     <div className={styles.card}>

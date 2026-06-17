@@ -6,6 +6,7 @@ import Stats from './components/Stats';
 import Settings from './components/Settings';
 import useLocalStorage from './hooks/useLocalStorage';
 import { PHASES } from './constants';
+import { generateDemoHistory as generateDemo, getNextPhase } from './utils/aggregators';
 import styles from './App.module.css';
 
 const DEFAULT_SETTINGS = {
@@ -101,27 +102,7 @@ export default function App() {
   }, [theme, setTheme]);
 
   const generateDemoHistory = useCallback(() => {
-    const newHistory = {};
-    const now = new Date();
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(now);
-      date.setDate(now.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const dayOfWeek = date.getDay();
-      let sessions = 0;
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        sessions = Math.floor(Math.random() * 8) + 2;
-      } else {
-        sessions = Math.floor(Math.random() * 5);
-      }
-      if (sessions > 0) {
-        newHistory[dateStr] = {
-          focusMinutes: sessions * 25,
-          sessions: sessions,
-        };
-      }
-    }
-    setHistory(newHistory);
+    setHistory(generateDemo());
   }, [setHistory]);
 
   const clearHistory = useCallback(() => {
