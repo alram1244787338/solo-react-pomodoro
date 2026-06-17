@@ -42,6 +42,52 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
+    if (!('Notification' in window)) return;
+    const requestPerm = () => {
+      if (Notification.permission === 'default') {
+        try {
+          if (Notification.requestPermission.length === 0) {
+            Notification.requestPermission();
+          } else {
+            Notification.requestPermission(() => {});
+          }
+        } catch (e) {
+          console.warn('Notification permission request failed:', e);
+        }
+      }
+    };
+    requestPerm();
+
+    const activateAudio = () => {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          if (ctx.state === 'suspended') {
+            ctx.resume();
+          }
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = 440;
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.01);
+        }
+      } catch (e) {}
+      document.removeEventListener('click', activateAudio, true);
+      document.removeEventListener('keydown', activateAudio, true);
+    };
+    document.addEventListener('click', activateAudio, true);
+    document.addEventListener('keydown', activateAudio, true);
+    return () => {
+      document.removeEventListener('click', activateAudio, true);
+      document.removeEventListener('keydown', activateAudio, true);
+    };
+  }, []);
+
+  useEffect(() => {
     const todayRecord = history[today];
     if (todayRecord) {
       setTodayFocusMinutes(todayRecord.focusMinutes || 0);
@@ -53,6 +99,34 @@ export default function App() {
   const toggleTheme = useCallback(() => {
     setTheme(theme === 'light' ? 'dark' : 'light');
   }, [theme, setTheme]);
+
+  const generateDemoHistory = useCallback(() => {
+    const newHistory = {};
+    const now = new Date();
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayOfWeek = date.getDay();
+      let sessions = 0;
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        sessions = Math.floor(Math.random() * 8) + 2;
+      } else {
+        sessions = Math.floor(Math.random() * 5);
+      }
+      if (sessions > 0) {
+        newHistory[dateStr] = {
+          focusMinutes: sessions * 25,
+          sessions: sessions,
+        };
+      }
+    }
+    setHistory(newHistory);
+  }, [setHistory]);
+
+  const clearHistory = useCallback(() => {
+    setHistory({});
+  }, [setHistory]);
 
   const recordSession = useCallback((durationMinutes, phaseType) => {
     if (phaseType === PHASES.WORK) {
@@ -128,6 +202,12 @@ export default function App() {
     setCurrentTaskId(taskId);
   }, []);
 
+  const editTask = useCallback((taskId, newName) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, name: newName } : t))
+    );
+  }, [setTasks]);
+
   const getPhaseDuration = () => {
     switch (phase) {
       case PHASES.WORK:
@@ -181,6 +261,7 @@ export default function App() {
               onToggle={toggleTask}
               onDelete={deleteTask}
               onSelect={selectTask}
+              onEdit={editTask}
               todayCompletedTasks={todayCompletedTasks}
               todayFocusMinutes={todayFocusMinutes}
             />
@@ -188,7 +269,12 @@ export default function App() {
         )}
 
         {currentView === 'stats' && (
-          <Stats history={history} tasks={tasks} />
+          <Stats
+            history={history}
+            tasks={tasks}
+            onGenerateDemo={generateDemoHistory}
+            onClearHistory={clearHistory}
+          />
         )}
       </main>
 

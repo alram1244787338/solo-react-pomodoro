@@ -4,6 +4,251 @@
   gap: 24px;
 }
 
+.emptyBanner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 12%, var(--bg-card)) 0%, var(--bg-card) 100%);
+  border: 1px dashed color-mix(in srgb, var(--accent-primary) 40%, var(--border-color));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.emptyBannerIcon {
+  font-size: 48px;
+  flex-shrink: 0;
+}
+
+.emptyBannerContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.emptyBannerTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.emptyBannerDesc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.emptyBannerActions {
+  flex-shrink: 0;
+}
+
+.primaryBtn {
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background-color: var(--accent-primary);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.primaryBtn:hover {
+  background-color: #7c3aed;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.insightCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background-color: color-mix(in srgb, var(--accent-break) 8%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--accent-break) 25%, var(--border-color));
+  border-radius: var(--radius-lg);
+}
+
+.insightEmoji {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.insightText {
+  font-size: 14px;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.insightText strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.demoBtn {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.demoBtn:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.clearBtn {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-work);
+  background-color: color-mix(in srgb, var(--accent-work) 8%, transparent);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.clearBtn:hover {
+  background-color: color-mix(in srgb, var(--accent-work) 15%, transparent);
+}
+
+.confirmBox {
+  padding: 16px;
+  background-color: color-mix(in srgb, var(--accent-work) 8%, var(--bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--accent-work) 30%, var(--border-color));
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.confirmBox p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cancelBtn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.cancelBtn:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.dangerBtn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background-color: var(--accent-work);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.dangerBtn:hover {
+  background-color: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.dailyList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.dailyRow {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 12px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.dailyRow:hover {
+  background-color: color-mix(in srgb, var(--accent-primary) 5%, var(--bg-secondary));
+}
+
+.dailyDate {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dailyLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dailyWeekday {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.dailyBarOuter {
+  height: 8px;
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.dailyBarInner {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-work));
+  border-radius: var(--radius-full);
+  transition: width 0.5s ease;
+  min-width: 2px;
+}
+
+.dailyValues {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.dailyFocus {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  min-width: 52px;
+  text-align: right;
+}
+
+.dailySessions {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: var(--accent-work-light);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

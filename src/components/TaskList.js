@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import styles from './TaskList.module.css';
 
 export default function TaskList({
@@ -8,10 +8,50 @@ export default function TaskList({
   onToggle,
   onDelete,
   onSelect,
+  onEdit,
   todayCompletedTasks,
   todayFocusMinutes,
 }) {
   const [inputValue, setInputValue] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editingValue, setEditingValue] = useState('');
+  const editInputRef = useRef(null);
+
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingId]);
+
+  const startEditing = (task, e) => {
+    if (e) e.stopPropagation();
+    setEditingId(task.id);
+    setEditingValue(task.name);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditingValue('');
+  };
+
+  const saveEditing = () => {
+    const newName = editingValue.trim();
+    if (newName && editingId) {
+      onEdit(editingId, newName);
+    }
+    cancelEditing();
+  };
+
+  const handleEditKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveEditing();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEditing();
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -95,7 +135,8 @@ export default function TaskList({
             <div
               key={task.id}
               className={`${styles.taskItem} ${task.id === currentTaskId ? styles.taskItemActive : ''} ${task.completed ? styles.taskItemCompleted : ''}`}
-              onClick={() => !task.completed && onSelect(task.id)}
+              onClick={() => !task.completed && !editingId && onSelect(task.id)}
+              onDoubleClick={(e) => !task.completed && startEditing(task, e)}
             >
               <button
                 className={styles.checkbox}
@@ -109,27 +150,55 @@ export default function TaskList({
               </button>
 
               <div className={styles.taskContent}>
-                <span className={styles.taskName}>{task.name}</span>
-                <div className={styles.taskMeta}>
-                  {task.completedPomodoros > 0 && (
-                    <span className={styles.pomodoroBadge}>
-                      🍅 {task.completedPomodoros}
-                    </span>
-                  )}
-                </div>
+                {editingId === task.id ? (
+                  <input
+                    ref={editInputRef}
+                    type="text"
+                    value={editingValue}
+                    onChange={(e) => setEditingValue(e.target.value)}
+                    onBlur={saveEditing}
+                    onKeyDown={handleEditKeyDown}
+                    onClick={(e) => e.stopPropagation()}
+                    className={styles.editInput}
+                    maxLength={100}
+                  />
+                ) : (
+                  <>
+                    <span className={styles.taskName} title="双击可编辑">{task.name}</span>
+                    <div className={styles.taskMeta}>
+                      {task.completedPomodoros > 0 && (
+                        <span className={styles.pomodoroBadge}>
+                          🍅 {task.completedPomodoros}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
-              <button
-                className={styles.deleteButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(task.id);
-                }}
-                aria-label="删除任务"
-                title="删除任务"
-              >
-                🗑️
-              </button>
+              <div className={styles.taskActions}>
+                {editingId !== task.id && (
+                  <button
+                    className={styles.editButton}
+                    onClick={(e) => startEditing(task, e)}
+                    aria-label="编辑任务"
+                    title="编辑任务"
+                  >
+                    ✏️
+                  </button>
+                )}
+                <button
+                  className={styles.deleteButton}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(task.id);
+                  }}
+                  aria-label="删除任务"
+                  title="删除任务"
+                >
+                  🗑️
+                </button>
+              </div>
             </div>
           ))
         )}

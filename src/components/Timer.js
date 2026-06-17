@@ -29,56 +29,161 @@ const PHASE_INFO = {
   },
 };
 
+let sharedAudioContext = null;
+
+function getAudioContext() {
+  if (!sharedAudioContext) {
+    try {
+      sharedAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      console.warn('AudioContext not supported');
+    }
+  }
+  if (sharedAudioContext && sharedAudioContext.state === 'suspended') {
+    sharedAudioContext.resume();
+  }
+  return sharedAudioContext;
+}
+
 function playBeep() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
   try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    const notes = [
+      { freq: 523.25, start: 0, end: 0.35 },
+      { freq: 659.25, start: 0.15, end: 0.5 },
+      { freq: 783.99, start: 0.3, end: 0.65 },
+      { freq: 1046.5, start: 0.5, end: 0.9 },
+    ];
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
-
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.5);
+    notes.forEach(({ freq, start, end }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      const t0 = ctx.currentTime + start;
+      const t1 = ctx.currentTime + end;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.25, t0 + 0.05);
+      gain.gain.setValueAtTime(0.25, t1 - 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, t1);
+      osc.start(t0);
+      osc.stop(t1 + 0.05);
+    });
 
     setTimeout(() => {
-      const osc2 = audioContext.createOscillator();
-      const gain2 = audioContext.createGain();
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
       osc2.connect(gain2);
-      gain2.connect(audioContext.destination);
-      osc2.frequency.value = 1000;
+      gain2.connect(ctx.destination);
+      osc2.frequency.value = 783.99;
       osc2.type = 'sine';
-      gain2.gain.setValueAtTime(0.3, audioContext.currentTime + 0.6);
-      gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.1);
-      osc2.start(audioContext.currentTime + 0.6);
-      osc2.stop(audioContext.currentTime + 1.1);
-    }, 600);
+      const now = ctx.currentTime;
+      gain2.gain.setValueAtTime(0, now);
+      gain2.gain.linearRampToValueAtTime(0.2, now + 0.05);
+      gain2.gain.setValueAtTime(0.2, now + 0.35);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      osc2.start(now);
+      osc2.stop(now + 0.6);
+    }, 1100);
   } catch (e) {
-    console.log('Audio playback failed:', e);
+    console.warn('Audio playback failed:', e);
   }
 }
 
 function requestNotificationPermission() {
-  if (!('Notification' in window)) return false;
-  if (Notification.permission === 'default') {
-    Notification.requestPermission();
+  if (!('Notification' in window)) {
+    return 'unsupported';
   }
-  return Notification.permission === 'granted';
+  if (Notification.permission === 'granted') {
+    return 'granted';
+  }
+  if (Notification.permission === 'denied') {
+    return 'denied';
+  }
+  if (Notification.permission === 'default') {
+    try {
+      if (Notification.requestPermission.length === 0) {
+        Notification.requestPermission();
+      } else {
+        Notification.requestPermission(() => {});
+      }
+    } catch (e) {
+      console.warn('Notification permission request failed:', e);
+    }
+  }
+  return Notification.permission;
 }
 
-function sendNotification(title, body) {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    try {
-      new Notification(title, { body, icon: '🍅' });
-    } catch (e) {
-      console.log('Notification failed:', e);
+let originalTitle = document.title;
+let blinkInterval = null;
+
+function startTitleBlink(message) {
+  stopTitleBlink();
+  if (!message) return;
+  let showMessage = true;
+  originalTitle = document.title;
+  blinkInterval = setInterval(() => {
+    document.title = showMessage ? message : originalTitle;
+    showMessage = !showMessage;
+  }, 1000);
+
+  const stopOnFocus = () => {
+    if (document.visibilityState === 'visible') {
+      stopTitleBlink();
+      document.removeEventListener('visibilitychange', stopOnFocus);
+      window.removeEventListener('focus', stopOnFocus);
     }
+  };
+  document.addEventListener('visibilitychange', stopOnFocus);
+  window.addEventListener('focus', stopOnFocus);
+}
+
+function stopTitleBlink() {
+  if (blinkInterval) {
+    clearInterval(blinkInterval);
+    blinkInterval = null;
+    document.title = originalTitle;
+  }
+}
+
+let lastNotificationTag = '';
+
+function sendNotification(title, body) {
+  if (!('Notification' in window)) return;
+
+  const tag = 'pomodoro-' + Date.now();
+  lastNotificationTag = tag;
+
+  try {
+    if (Notification.permission === 'granted') {
+      const notification = new Notification(title, {
+        body,
+        icon: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🍅</text></svg>'),
+        badge: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🍅</text></svg>'),
+        tag,
+        requireInteraction: true,
+        silent: true,
+        vibrate: [200, 100, 200],
+        renotify: true,
+        priority: 'high',
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+
+      setTimeout(() => notification.close(), 30000);
+    }
+  } catch (e) {
+    console.warn('Notification failed:', e);
+  }
+
+  if (document.visibilityState === 'hidden') {
+    startTitleBlink(title);
   }
 }
 
@@ -116,14 +221,26 @@ export default function Timer({
       playBeep();
     }
     if (notificationsEnabled) {
-      const notificationTitle = phase === PHASES.WORK ? '🎯 专注完成！' : '⏰ 休息结束！';
-      const notificationBody = phase === PHASES.WORK
-        ? `${durationMinutes} 分钟专注已完成，休息一下吧！`
-        : `${durationMinutes} 分钟休息结束，继续加油！`;
+      requestNotificationPermission();
+      let notificationTitle, notificationBody;
+      if (phase === PHASES.WORK) {
+        notificationTitle = '🎯 专注完成！';
+        notificationBody = `太棒了！完成了 ${durationMinutes} 分钟专注工作。`;
+        if (currentTask?.name) {
+          notificationBody = `「${currentTask.name}」\n` + notificationBody;
+        }
+        notificationBody += '\n去休息一下喝杯水吧 ☕';
+      } else if (phase === PHASES.LONG_BREAK) {
+        notificationTitle = '🌴 长休息结束！';
+        notificationBody = `${durationMinutes} 分钟长休息已结束\n准备好迎接新一轮挑战了吗？💪`;
+      } else {
+        notificationTitle = '☕ 休息结束！';
+        notificationBody = `${durationMinutes} 分钟休息已结束\n回到专注状态，继续加油！🍅`;
+      }
       sendNotification(notificationTitle, notificationBody);
     }
     onComplete(durationMinutes);
-  }, [soundEnabled, notificationsEnabled, phase, durationMinutes, onComplete]);
+  }, [soundEnabled, notificationsEnabled, phase, durationMinutes, currentTask, onComplete]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -157,6 +274,10 @@ export default function Timer({
       requestNotificationPermission();
     }
   }, [notificationsEnabled]);
+
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
 
   const handleStart = () => {
     hasCompletedRef.current = false;
